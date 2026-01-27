@@ -1,0 +1,19 @@
+_format_version: "3.0"
+
+consumers:
+  - username: banking-client
+    keyauth_credentials:
+      - key: test123
+
+services:
+  - name: banking-api
+    url: http://fastapi:8000
+    routes:
+      - name: banking-route
+        paths:
+          - /api
+        strip_path: true
+
+plugins:
+  - name: key-auth
+  - name: prometheus
