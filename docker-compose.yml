@@ -1,36 +1,40 @@
 services:
-  minio:
-    image: minio/minio
-    container_name: minio
-    ports:
-      - "9000:9000"
-      - "9001:9001"
-    environment:
-      MINIO_ROOT_USER: admin
-      MINIO_ROOT_PASSWORD: password123
-    command: server /data --console-address ":9001"
-    volumes:
-      - minio_data:/data
-
-  mongodb:
-    image: mongo:6
-    container_name: mongodb
-    ports:
-      - "27017:27017"
-    volumes:
-      - mongo_data:/data/db
-
   fastapi:
-    image: tiangolo/uvicorn-gunicorn-fastapi:python3.11
+    build: ./api
     container_name: fastapi
-    ports:
-      - "8000:80"
-    volumes:
-      - ./api:/app
-    depends_on:
-      - mongodb
-      - minio
+    expose:
+      - "8000"
 
-volumes:
-  minio_data:
-  mongo_data:
+  kong:
+    image: kong:3.6
+    container_name: kong
+    ports:
+      - "8000:8000"
+      - "8001:8001"
+    environment:
+      KONG_DATABASE: "off"
+      KONG_DECLARATIVE_CONFIG: /kong/kong.yml
+      KONG_ADMIN_LISTEN: 0.0.0.0:8001
+    volumes:
+      - ./kong/kong.yml:/kong/kong.yml
+    depends_on:
+      - fastapi
+
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: prometheus
+    ports:
+      - "9090:9090"
+    volumes:
+      - ./monitoring/prometheus.yml:/etc/prometheus/prometheus.yml
+    depends_on:
+      - fastapi
+      - kong
+
+  grafana:
+    image: grafana/grafana:latest
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    depends_on:
+      - prometheus
