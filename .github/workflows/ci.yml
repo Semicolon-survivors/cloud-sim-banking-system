@@ -18,11 +18,11 @@ jobs:
       # 2️⃣ Verify Prometheus config exists
       - name: Verify Prometheus config exists
         run: |
-          if [ ! -f ./monitoring/prometheus.yml ]; then
-            echo "Error: prometheus.yml not found in ./monitoring"
+          if [ ! -f ./Monitoring/prometheus.yml ]; then
+            echo "Error: prometheus.yml not found in ./Monitoring"
             exit 1
           fi
-          ls -l ./monitoring/prometheus.yml
+          ls -l ./Monitoring/prometheus.yml
 
       # 3️⃣ Free ports (optional)
       - name: Free ports 8000, 8001, 9090
@@ -50,7 +50,7 @@ jobs:
         run: |
           docker run -d \
             --name prometheus \
-            -v ${{ github.workspace }}/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml \
+            -v ${{ github.workspace }}/Monitoring/prometheus.yml:/etc/prometheus/prometheus.yml \
             -p 9090:9090 \
             prom/prometheus:latest
 
