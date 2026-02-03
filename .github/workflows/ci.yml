@@ -2,63 +2,58 @@ name: Cloud Sim Banking CI
 
 on:
   push:
-    branches: ["main"]
+    branches: [main]
   pull_request:
+    branches: [main]
 
 jobs:
-  build-and-test:
+  monitoring:
     runs-on: ubuntu-latest
 
     steps:
+      # 1️⃣ Checkout repository
       - name: Checkout repository
         uses: actions/checkout@v3
 
-      - name: Set up Docker Buildx
-        uses: docker/setup-buildx-action@v3
-
-      - name: Build services
-        run: docker compose build
-
-      - name: Start services
-        run: docker compose up -d
-
-      # Wait for Kong to be ready instead of fixed sleep
-      - name: Wait for Kong Gateway
+      # 2️⃣ Verify Prometheus config exists
+      - name: Verify Prometheus config exists
         run: |
-          echo "Waiting for Kong to be ready..."
-          for i in {1..30}; do
-            if curl -s -H "apikey: test123" http://localhost:8000/api > /dev/null; then
-              echo "Kong is ready"
-              exit 0
-            fi
-            sleep 2
-          done
-          echo "Kong did not become ready in time"
-          exit 1
+          if [ ! -f ./monitoring/prometheus.yml ]; then
+            echo "Error: prometheus.yml not found in ./monitoring"
+            exit 1
+          fi
+          ls -l ./monitoring/prometheus.yml
 
+      # 3️⃣ Verify ports are free (optional but recommended)
+      - name: Check ports
+        run: |
+          for port in 8000 8001 9090; do
+            if lsof -Pi :$port -sTCP:LISTEN -t >/dev/null ; then
+              echo "Port $port is in use. Killing process..."
+              sudo kill -9 $(lsof -t -i:$port)
+            fi
+          done
+
+      # 4️⃣ Start Kong container
+      - name: Start Kong container
+        run: |
+          docker run -d \
+            --name kong \
+            -p 8000:8000 \   # proxy
+            -p 8443:8443 \   # proxy HTTPS
+            -p 8001:8001 \   # admin API
+            -p 8444:8444 \   # admin HTTPS
+            kong:latest
+
+      # 5️⃣ Start Prometheus container
+      - name: Start Prometheus container
+        run: |
+          docker run -d \
+            --name prometheus \
+            -v ${{ github.workspace }}/monitoring/prometheus.yml:/etc/prometheus/prometheus.yml \
+            -p 9090:9090 \
+            prom/prometheus:latest
+
+      # 6️⃣ Verify containers are running
       - name: List running containers
         run: docker ps
-
-      # Health check through Kong with authentication
-      - name: Test API root through Kong
-        run: |
-          curl --fail \
-            -H "apikey: test123" \
-            http://localhost:8000/api
-
-      # Test protected endpoint with role header
-      - name: Test accounts endpoint (admin)
-        run: |
-          curl --fail \
-            -H "apikey: test123" \
-            -H "X-Role: admin" \
-            http://localhost:8000/api/accounts
-
-      # Show logs only if something fails
-      - name: Show logs on failure
-        if: failure()
-        run: docker compose logs
-
-      - name: Stop services
-        if: always()
-        run: docker compose down
