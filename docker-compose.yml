@@ -1,6 +1,6 @@
 services:
   fastapi:
-    build: ./backend
+    build: ./api
     container_name: fastapi
     ports:
       - "8000:8000"
@@ -61,3 +61,4 @@ services:
       - "3000:3000"
     depends_on:
       - prometheus
+
