@@ -1,11 +1,30 @@
-version: "3.9"
-
 services:
   fastapi:
-    build: ./api
+    build: ./backend
     container_name: fastapi
-    expose:
-      - "8000"
+    ports:
+      - "8000:8000"
+    depends_on:
+      - mongodb
+    environment:
+      - MONGO_URL=mongodb://mongodb:27017
+ 
+  mongodb:
+    image: mongo
+    container_name: mongodb
+    ports:
+      - "27017:27017"
+ 
+  minio:
+    image: minio/minio
+    container_name: minio
+    command: server /data --console-address ":9001"
+    environment:
+      - MINIO_ROOT_USER=admin
+      - MINIO_ROOT_PASSWORD=password
+    ports:
+      - "9000:9000"
+      - "9001:9001"
 
   kong:
     image: kong:3.6
@@ -22,12 +41,9 @@ services:
     depends_on:
       - fastapi
 
-  # -------------------------
-  # Monitoring (optional)
-  # -------------------------
   prometheus:
-    profiles: ["monitoring"]
-    image: prom/prometheus:latest
+    image: prom/prometheus:v2.48.1
+    platform: linux/amd64
     container_name: prometheus
     ports:
       - "9090:9090"
@@ -38,8 +54,8 @@ services:
       - kong
 
   grafana:
-    profiles: ["monitoring"]
-    image: grafana/grafana:latest
+    image: grafana/grafana:10.2.3
+    platform: linux/amd64
     container_name: grafana
     ports:
       - "3000:3000"
