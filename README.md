@@ -337,6 +337,5 @@ Developed as part of a cloud-native banking simulation project focused on:
 If you found this project helpful:
 
 - Star the repository
-- Share with others
 - Contribute improvements
 
